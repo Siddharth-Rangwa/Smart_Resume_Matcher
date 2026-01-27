@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Resume Matcher</title>
+    <link rel="stylesheet" href="popup.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#6366f1" />
+                            <stop offset="100%" style="stop-color:#8b5cf6" />
+                        </linearGradient>
+                    </defs>
+                    <rect width="32" height="32" rx="8" fill="url(#logoGradient)" />
+                    <path d="M10 8h12a2 2 0 012 2v12a2 2 0 01-2 2H10a2 2 0 01-2-2V10a2 2 0 012-2z" stroke="white"
+                        stroke-width="1.5" fill="none" />
+                    <path d="M12 12h8M12 16h6M12 20h4" stroke="white" stroke-width="1.5" stroke-linecap="round" />
+                    <circle cx="22" cy="22" r="6" fill="#10b981" stroke="white" stroke-width="1.5" />
+                    <path d="M20 22l1.5 1.5 3-3" stroke="white" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+                <h1>Resume Matcher</h1>
+            </div>
+            <span class="badge">AI Powered</span>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Resume Upload Section -->
+            <section class="upload-section" id="uploadSection">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="24" cy="24" r="24" fill="url(#uploadGradient)" fill-opacity="0.1" />
+                            <defs>
+                                <linearGradient id="uploadGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#6366f1" />
+                                    <stop offset="100%" style="stop-color:#8b5cf6" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M24 32V20M24 20L20 24M24 20L28 24" stroke="#6366f1" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M32 28v4a2 2 0 01-2 2H18a2 2 0 01-2-2v-4" stroke="#6366f1" stroke-width="2"
+                                stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <p class="upload-text">Drag & drop your resume here</p>
+                    <p class="upload-subtext">or click to browse</p>
+                    <p class="upload-formats">Supports PDF & DOCX</p>
+                    <input type="file" id="resumeInput" accept=".pdf,.docx" hidden>
+                </div>
+            </section>
+
+            <!-- Resume Loaded Section (Hidden by default) -->
+            <section class="resume-loaded-section hidden" id="resumeLoadedSection">
+                <div class="resume-card">
+                    <div class="resume-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#6366f1"
+                                stroke-width="2" fill="none" />
+                            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="#6366f1" stroke-width="2"
+                                stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <div class="resume-info">
+                        <p class="resume-name" id="resumeName">resume.pdf</p>
+                        <p class="resume-meta" id="resumeMeta">Uploaded just now</p>
+                    </div>
+                    <button class="btn-icon" id="removeResume" title="Remove resume">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                        </svg>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Analyze Button -->
+            <button class="btn-primary" id="analyzeBtn" disabled>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="2" />
+                    <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+                <span>Analyze Match</span>
+            </button>
+
+            <!-- Results Section (Hidden by default) -->
+            <section class="results-section hidden" id="resultsSection">
+                <!-- Match Score -->
+                <div class="match-score-card">
+                    <div class="score-ring-container">
+                        <svg class="score-ring" viewBox="0 0 100 100">
+                            <circle class="score-ring-bg" cx="50" cy="50" r="40" />
+                            <circle class="score-ring-progress" cx="50" cy="50" r="40" id="scoreRing" />
+                        </svg>
+                        <div class="score-value">
+                            <span class="score-number" id="matchScore">0</span>
+                            <span class="score-percent">%</span>
+                        </div>
+                    </div>
+                    <div class="score-label" id="matchLabel">Match Score</div>
+                </div>
+
+                <!-- Keywords Analysis -->
+                <div class="keywords-section">
+                    <div class="keywords-header">
+                        <h3>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14 2L8 8M14 2l-4 12-2-4-4-2L14 2z" stroke="#f59e0b" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            Missing Keywords
+                        </h3>
+                        <span class="keywords-count" id="missingCount">0</span>
+                    </div>
+                    <div class="keywords-list" id="missingKeywords">
+                        <!-- Keywords will be populated here -->
+                    </div>
+                </div>
+
+                <div class="keywords-section matched">
+                    <div class="keywords-header">
+                        <h3>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path d="M13.5 4.5L6 12l-3.5-3.5" stroke="#10b981" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            Matched Skills
+                        </h3>
+                        <span class="keywords-count matched" id="matchedCount">0</span>
+                    </div>
+                    <div class="keywords-list" id="matchedKeywords">
+                        <!-- Keywords will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Suggestions -->
+                <div class="suggestions-section">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="8" cy="8" r="7" stroke="#6366f1" stroke-width="1.5" />
+                            <path d="M8 5v3M8 10v1" stroke="#6366f1" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                        Suggestions
+                    </h3>
+                    <ul class="suggestions-list" id="suggestionsList">
+                        <!-- Suggestions will be populated here -->
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Loading State -->
+            <div class="loading-overlay hidden" id="loadingOverlay">
+                <div class="loading-spinner"></div>
+                <p>Analyzing your resume...</p>
+            </div>
+
+            <!-- Error State -->
+            <div class="error-message hidden" id="errorMessage">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="10" cy="10" r="9" stroke="#ef4444" stroke-width="2" />
+                    <path d="M10 6v5M10 13v1" stroke="#ef4444" stroke-width="2" stroke-linecap="round" />
+                </svg>
+                <span id="errorText">Something went wrong</span>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>🔒 All data stays on your device</p>
+        </footer>
+    </div>
+
+    <!-- Libraries -->
+    <script src="libs/pdf.min.js"></script>
+    <script src="libs/mammoth.browser.min.js"></script>
+    <script src="resumeParser.js"></script>
+    <script src="matchingEngine.js"></script>
+    <script src="popup.js"></script>
+</body>
+
+</html>

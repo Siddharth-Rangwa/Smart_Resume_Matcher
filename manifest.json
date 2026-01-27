@@ -1,0 +1,74 @@
+{
+    "manifest_version": 3,
+    "name": "Smart Resume Matcher",
+    "version": "1.0.0",
+    "description": "Evaluate your resume against job descriptions and get match percentage + keyword suggestions",
+    "permissions": [
+        "storage",
+        "activeTab",
+        "scripting"
+    ],
+    "host_permissions": [
+        "https://www.linkedin.com/*",
+        "https://linkedin.com/*",
+        "https://www.naukri.com/*",
+        "https://naukri.com/*",
+        "https://www.indeed.com/*",
+        "https://indeed.com/*",
+        "https://www.glassdoor.com/*",
+        "https://glassdoor.com/*",
+        "https://*.monster.com/*",
+        "https://*.shine.com/*",
+        "https://*.foundit.in/*"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        },
+        "default_title": "Smart Resume Matcher"
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.linkedin.com/jobs/*",
+                "https://linkedin.com/jobs/*",
+                "https://www.naukri.com/*",
+                "https://naukri.com/*",
+                "https://www.indeed.com/*",
+                "https://indeed.com/*",
+                "https://www.glassdoor.com/*",
+                "https://glassdoor.com/*",
+                "https://*.monster.com/*",
+                "https://*.shine.com/*",
+                "https://*.foundit.in/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "css": [
+                "content.css"
+            ]
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "libs/*"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
+}
