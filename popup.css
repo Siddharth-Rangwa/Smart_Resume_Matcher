@@ -147,6 +147,153 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* Settings Button */
+.btn-settings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--gray-100);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-settings:hover {
+  background: var(--primary-100);
+  color: var(--primary-600);
+  transform: rotate(45deg);
+}
+
+/* ============================================
+   Settings Section
+   ============================================ */
+.settings-section {
+  margin-bottom: var(--spacing-md);
+  animation: slideIn 0.3s ease;
+}
+
+.settings-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--primary-100);
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.settings-header h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.settings-desc {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-desc a {
+  color: var(--primary-500);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.settings-desc a:hover {
+  text-decoration: underline;
+}
+
+.api-key-input-group {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+}
+
+.api-key-input-group input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-family: var(--font-family);
+  transition: all var(--transition-fast);
+}
+
+.api-key-input-group input:focus {
+  outline: none;
+  border-color: var(--primary-400);
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+.api-key-input-group input::placeholder {
+  color: var(--gray-400);
+}
+
+.api-key-input-group .btn-icon:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.btn-save-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding: 10px;
+  background: var(--gradient-primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-save-key:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.api-status {
+  margin-top: var(--spacing-sm);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.api-status.success {
+  background: var(--success-50);
+  color: var(--success-600);
+  border: 1px solid var(--success-200);
+}
+
+.api-status.error {
+  background: var(--error-50);
+  color: var(--error-600);
+  border: 1px solid var(--error-200);
+}
+
+.api-status:empty {
+  display: none;
+}
+
 /* ============================================
    Upload Section
    ============================================ */

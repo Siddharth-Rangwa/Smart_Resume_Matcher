@@ -1,110 +1,131 @@
 /**
- * Smart Resume Matcher - Matching Engine
- * NLP-based resume vs job description matching
+ * Smart Resume Matcher - Gemini AI Matching Engine
+ * Uses Google Gemini API for intelligent resume analysis
  */
 
 const MatchingEngine = {
-    // Common tech skills and keywords
-    skillsDatabase: [
-        // Programming Languages
-        'javascript', 'python', 'java', 'c++', 'c#', 'ruby', 'go', 'rust', 'swift', 'kotlin',
-        'typescript', 'php', 'scala', 'perl', 'r', 'matlab', 'sql', 'html', 'css', 'sass',
-        // Frameworks & Libraries  
-        'react', 'angular', 'vue', 'node', 'express', 'django', 'flask', 'spring', 'rails',
-        'nextjs', 'nuxt', 'gatsby', 'jquery', 'bootstrap', 'tailwind', 'redux', 'graphql',
-        // Databases
-        'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'cassandra', 'oracle',
-        'sqlite', 'dynamodb', 'firebase', 'supabase',
-        // Cloud & DevOps
-        'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible',
-        'ci/cd', 'git', 'github', 'gitlab', 'bitbucket', 'linux', 'nginx', 'apache',
-        // AI/ML
-        'machine learning', 'deep learning', 'tensorflow', 'pytorch', 'keras', 'nlp',
-        'computer vision', 'data science', 'pandas', 'numpy', 'scikit-learn',
-        // Soft Skills
-        'leadership', 'teamwork', 'communication', 'problem solving', 'agile', 'scrum',
-        'project management', 'analytical', 'creative', 'time management'
-    ],
+    GEMINI_API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
 
-    async analyze(resumeText, jobDescription) {
-        const resumeWords = this.tokenize(resumeText.toLowerCase());
-        const jobWords = this.tokenize(jobDescription.toLowerCase());
-
-        const resumeSkills = this.extractSkills(resumeText);
-        const jobSkills = this.extractSkills(jobDescription);
-
-        const matchedKeywords = resumeSkills.filter(s => jobSkills.includes(s));
-        const missingKeywords = jobSkills.filter(s => !resumeSkills.includes(s));
-
-        // Calculate match percentage
-        const skillMatch = jobSkills.length > 0 ? (matchedKeywords.length / jobSkills.length) * 100 : 0;
-        const textSimilarity = this.calculateSimilarity(resumeWords, jobWords);
-        const matchPercentage = Math.round(skillMatch * 0.7 + textSimilarity * 0.3);
-
-        return {
-            matchPercentage: Math.min(matchPercentage, 100),
-            matchedKeywords: [...new Set(matchedKeywords)].slice(0, 20),
-            missingKeywords: [...new Set(missingKeywords)].slice(0, 15),
-            suggestions: this.generateSuggestions(matchPercentage, missingKeywords)
-        };
-    },
-
-    tokenize(text) {
-        return text.toLowerCase()
-            .replace(/[^a-z0-9\s+#]/g, ' ')
-            .split(/\s+/)
-            .filter(w => w.length > 2);
-    },
-
-    extractSkills(text) {
-        const lower = text.toLowerCase();
-        const found = [];
-
-        // Check for known skills
-        this.skillsDatabase.forEach(skill => {
-            if (lower.includes(skill)) found.push(skill);
-        });
-
-        // Extract years of experience patterns
-        const expPattern = /(\d+)\+?\s*(?:years?|yrs?)/gi;
-        let match;
-        while ((match = expPattern.exec(text)) !== null) {
-            found.push(`${match[1]}+ years experience`);
+    /**
+     * Analyze resume against job description using Gemini AI
+     */
+    async analyze(resumeText, jobDescription, apiKey) {
+        if (!apiKey) {
+            throw new Error('Please set your Gemini API key in settings');
         }
 
-        // Extract degree requirements
-        const degrees = ['bachelor', 'master', 'phd', 'b.tech', 'm.tech', 'bsc', 'msc', 'mba'];
-        degrees.forEach(deg => {
-            if (lower.includes(deg)) found.push(deg);
-        });
+        const prompt = this.buildPrompt(resumeText, jobDescription);
 
-        return [...new Set(found)];
+        try {
+            const response = await fetch(`${this.GEMINI_API_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.3,
+                        topP: 0.8,
+                        maxOutputTokens: 2048
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || 'API request failed');
+            }
+
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!text) throw new Error('No response from Gemini');
+
+            return this.parseResponse(text);
+        } catch (error) {
+            console.error('Gemini API error:', error);
+            throw error;
+        }
     },
 
-    calculateSimilarity(words1, words2) {
-        const set1 = new Set(words1);
-        const set2 = new Set(words2);
-        const intersection = [...set1].filter(w => set2.has(w));
-        const union = new Set([...set1, ...set2]);
-        return (intersection.length / union.size) * 100;
+    /**
+     * Build the analysis prompt
+     */
+    buildPrompt(resumeText, jobDescription) {
+        return `You are an expert ATS (Applicant Tracking System) and career coach. Analyze how well the resume matches the job description.
+
+## RESUME:
+${resumeText.substring(0, 4000)}
+
+## JOB DESCRIPTION:
+${jobDescription.substring(0, 3000)}
+
+## TASK:
+Analyze the resume against the job requirements and respond ONLY with valid JSON in this exact format:
+
+{
+  "matchPercentage": <number 0-100>,
+  "matchedKeywords": ["skill1", "skill2", ...],
+  "missingKeywords": ["skill1", "skill2", ...],
+  "suggestions": [
+    "Specific actionable suggestion 1",
+    "Specific actionable suggestion 2",
+    "Specific actionable suggestion 3",
+    "Specific actionable suggestion 4",
+    "Specific actionable suggestion 5"
+  ],
+  "summary": "One paragraph summary of the match analysis"
+}
+
+IMPORTANT RULES:
+1. matchPercentage should reflect realistic ATS scoring
+2. matchedKeywords: Skills/technologies from the resume that match job requirements
+3. missingKeywords: Important skills from job description NOT found in resume
+4. suggestions: Specific, actionable tips to improve the resume for THIS job
+5. Be honest - don't inflate the match percentage
+6. Return ONLY the JSON object, no markdown, no explanation`;
     },
 
-    generateSuggestions(score, missing) {
-        const suggestions = [];
+    /**
+     * Parse Gemini response into structured data
+     */
+    parseResponse(text) {
+        try {
+            // Clean up the response - remove markdown code blocks if present
+            let cleaned = text.trim();
+            cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+            cleaned = cleaned.trim();
 
-        if (score < 40) {
-            suggestions.push('Consider tailoring your resume more specifically to this role');
-        }
-        if (missing.length > 5) {
-            suggestions.push(`Add these key skills if you have them: ${missing.slice(0, 3).join(', ')}`);
-        }
-        if (missing.some(k => k.includes('experience'))) {
-            suggestions.push('Highlight relevant experience more prominently');
-        }
-        suggestions.push('Use keywords from the job description in your resume');
-        suggestions.push('Quantify achievements with numbers where possible');
+            const result = JSON.parse(cleaned);
 
-        return suggestions.slice(0, 5);
+            return {
+                matchPercentage: Math.min(100, Math.max(0, parseInt(result.matchPercentage) || 0)),
+                matchedKeywords: Array.isArray(result.matchedKeywords) ? result.matchedKeywords.slice(0, 20) : [],
+                missingKeywords: Array.isArray(result.missingKeywords) ? result.missingKeywords.slice(0, 15) : [],
+                suggestions: Array.isArray(result.suggestions) ? result.suggestions.slice(0, 5) : [],
+                summary: result.summary || ''
+            };
+        } catch (e) {
+            console.error('Failed to parse Gemini response:', e, text);
+            throw new Error('Failed to parse AI response. Please try again.');
+        }
+    },
+
+    /**
+     * Validate API key by making a simple request
+     */
+    async validateApiKey(apiKey) {
+        try {
+            const response = await fetch(`${this.GEMINI_API_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: 'Say "OK" only' }] }]
+                })
+            });
+            return response.ok;
+        } catch {
+            return false;
+        }
     }
 };
 

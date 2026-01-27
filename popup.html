@@ -33,8 +33,58 @@
                 </svg>
                 <h1>Resume Matcher</h1>
             </div>
-            <span class="badge">AI Powered</span>
+            <button class="btn-settings" id="settingsBtn" title="Settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
+                    <path
+                        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+            </button>
         </header>
+
+        <!-- API Key Settings (Hidden by default) -->
+        <section class="settings-section hidden" id="settingsSection">
+            <div class="settings-card">
+                <div class="settings-header">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"
+                                stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        Gemini API Key
+                    </h3>
+                    <button class="btn-icon" id="closeSettings" title="Close">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                        </svg>
+                    </button>
+                </div>
+                <p class="settings-desc">Get your free API key from <a href="https://aistudio.google.com/apikey"
+                        target="_blank">Google AI Studio</a></p>
+                <div class="api-key-input-group">
+                    <input type="password" id="apiKeyInput" placeholder="Enter your Gemini API key" autocomplete="off">
+                    <button class="btn-icon" id="toggleKeyVisibility" title="Show/Hide">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            id="eyeIcon">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor"
+                                stroke-width="2" />
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
+                        </svg>
+                    </button>
+                </div>
+                <button class="btn-save-key" id="saveApiKey">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                    Save API Key
+                </button>
+                <div class="api-status" id="apiStatus"></div>
+            </div>
+        </section>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -181,7 +231,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>🔒 All data stays on your device</p>
+            <p>⚡ Powered by Gemini AI</p>
         </footer>
     </div>
 
