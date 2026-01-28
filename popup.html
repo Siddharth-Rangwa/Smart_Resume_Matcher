@@ -33,59 +33,13 @@
                 </svg>
                 <h1>Resume Matcher</h1>
             </div>
-            <button class="btn-settings" id="settingsBtn" title="Settings">
+            <button class="btn-settings" id="settingsBtn" title="About" style="display: none;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
-                    <path
-                        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+                    <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                 </svg>
             </button>
         </header>
-
-        <!-- API Key Settings (Hidden by default) -->
-        <section class="settings-section hidden" id="settingsSection">
-            <div class="settings-card">
-                <div class="settings-header">
-                    <h3>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"
-                                stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                        Hugging Face Token
-                    </h3>
-                    <button class="btn-icon" id="closeSettings" title="Close">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" />
-                        </svg>
-                    </button>
-                </div>
-                <p class="settings-desc">Get your free token from <a href="https://huggingface.co/settings/tokens"
-                        target="_blank">Hugging Face</a></p>
-                <div class="api-key-input-group">
-                    <input type="password" id="apiKeyInput" placeholder="Enter your HF token (hf_...)"
-                        autocomplete="off">
-                    <button class="btn-icon" id="toggleKeyVisibility" title="Show/Hide">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-                            id="eyeIcon">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor"
-                                stroke-width="2" />
-                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
-                        </svg>
-                    </button>
-                </div>
-                <button class="btn-save-key" id="saveApiKey">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round" />
-                    </svg>
-                    Save API Key
-                </button>
-                <div class="api-status" id="apiStatus"></div>
-            </div>
-        </section>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -217,7 +171,13 @@
             <!-- Loading State -->
             <div class="loading-overlay hidden" id="loadingOverlay">
                 <div class="loading-spinner"></div>
-                <p>Analyzing your resume...</p>
+                <p id="loadingText">Analyzing your resume...</p>
+                <div class="loading-progress hidden" id="loadingProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
             </div>
 
             <!-- Error State -->
@@ -232,13 +192,14 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>🤗 Powered by Hugging Face AI</p>
+            <p>🧠 Local AI • No API Key Required</p>
         </footer>
     </div>
 
     <!-- Libraries -->
     <script src="libs/pdf.min.js"></script>
     <script src="libs/mammoth.browser.min.js"></script>
+    <script src="skillsDatabase.js"></script>
     <script src="resumeParser.js"></script>
     <script src="matchingEngine.js"></script>
     <script src="popup.js"></script>

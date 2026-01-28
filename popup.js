@@ -1,6 +1,7 @@
 /**
  * Smart Resume Matcher - Popup Script
- * Handles UI interactions, resume upload, and Gemini AI analysis
+ * Handles UI interactions, resume upload, and local NLP analysis
+ * No API key required - runs 100% in browser
  */
 
 // ============================================
@@ -19,15 +20,6 @@ const loadingOverlay = document.getElementById('loadingOverlay');
 const errorMessage = document.getElementById('errorMessage');
 const errorText = document.getElementById('errorText');
 
-// Settings elements
-const settingsBtn = document.getElementById('settingsBtn');
-const settingsSection = document.getElementById('settingsSection');
-const closeSettingsBtn = document.getElementById('closeSettings');
-const apiKeyInput = document.getElementById('apiKeyInput');
-const toggleKeyVisibility = document.getElementById('toggleKeyVisibility');
-const saveApiKeyBtn = document.getElementById('saveApiKey');
-const apiStatus = document.getElementById('apiStatus');
-
 // Score elements
 const matchScore = document.getElementById('matchScore');
 const scoreRing = document.getElementById('scoreRing');
@@ -45,7 +37,6 @@ const suggestionsList = document.getElementById('suggestionsList');
 // ============================================
 let currentResume = null;
 let resumeText = '';
-let apiKey = '';
 
 // ============================================
 // Initialize
@@ -53,7 +44,7 @@ let apiKey = '';
 document.addEventListener('DOMContentLoaded', async () => {
     await loadStoredData();
     setupEventListeners();
-    checkApiKeyStatus();
+    updateAnalyzeButton();
 });
 
 // ============================================
@@ -70,66 +61,6 @@ function setupEventListeners() {
     // Resume actions
     removeResumeBtn.addEventListener('click', handleRemoveResume);
     analyzeBtn.addEventListener('click', handleAnalyze);
-
-    // Settings
-    settingsBtn.addEventListener('click', toggleSettings);
-    closeSettingsBtn.addEventListener('click', toggleSettings);
-    saveApiKeyBtn.addEventListener('click', handleSaveApiKey);
-    toggleKeyVisibility.addEventListener('click', togglePasswordVisibility);
-}
-
-// ============================================
-// Settings Functions
-// ============================================
-function toggleSettings() {
-    settingsSection.classList.toggle('hidden');
-}
-
-function togglePasswordVisibility() {
-    const isPassword = apiKeyInput.type === 'password';
-    apiKeyInput.type = isPassword ? 'text' : 'password';
-}
-
-async function handleSaveApiKey() {
-    const key = apiKeyInput.value.trim();
-
-    if (!key) {
-        showApiStatus('Please enter an API key', 'error');
-        return;
-    }
-
-    showApiStatus('Validating...', '');
-
-    // Validate the API key
-    const isValid = await MatchingEngine.validateApiKey(key);
-
-    if (isValid) {
-        apiKey = key;
-        await chrome.storage.local.set({ geminiApiKey: key });
-        showApiStatus('✓ API key saved successfully!', 'success');
-        checkApiKeyStatus();
-
-        // Auto-close settings after success
-        setTimeout(() => {
-            settingsSection.classList.add('hidden');
-            apiStatus.textContent = '';
-            apiStatus.className = 'api-status';
-        }, 1500);
-    } else {
-        showApiStatus('Invalid API key. Please check and try again.', 'error');
-    }
-}
-
-function showApiStatus(message, type) {
-    apiStatus.textContent = message;
-    apiStatus.className = 'api-status' + (type ? ' ' + type : '');
-}
-
-function checkApiKeyStatus() {
-    if (apiKey) {
-        // Mask the API key display
-        apiKeyInput.value = apiKey.substring(0, 8) + '••••••••••••••••';
-    }
 }
 
 // ============================================
@@ -137,36 +68,26 @@ function checkApiKeyStatus() {
 // ============================================
 async function loadStoredData() {
     return new Promise((resolve) => {
-        chrome.storage.local.get(['resume', 'geminiApiKey'], (result) => {
-            // Load resume
+        chrome.storage.local.get(['resume'], (result) => {
             if (result.resume) {
                 currentResume = result.resume;
                 resumeText = result.resume.text;
                 showResumeLoaded(result.resume.name, result.resume.uploadedAt);
-                updateAnalyzeButton();
             }
-
-            // Load API key
-            if (result.geminiApiKey) {
-                apiKey = result.geminiApiKey;
-                updateAnalyzeButton();
-            }
-
             resolve();
         });
     });
 }
 
 function updateAnalyzeButton() {
-    // Only require resume since API key is hardcoded
     analyzeBtn.disabled = !currentResume;
 
     analyzeBtn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="2"/>
-        <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-      <span>Analyze Match</span>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="2"/>
+            <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>Analyze Match</span>
     `;
 }
 
@@ -295,6 +216,20 @@ async function handleAnalyze() {
     hideError();
     resultsSection.classList.add('hidden');
 
+    // Get progress elements
+    const loadingText = document.getElementById('loadingText');
+    const loadingProgress = document.getElementById('loadingProgress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+
+    // Progress callback for model loading
+    const onProgress = (percent, file) => {
+        loadingText.textContent = 'Loading AI model...';
+        loadingProgress.classList.remove('hidden');
+        progressFill.style.width = `${percent}%`;
+        progressText.textContent = `${percent}%`;
+    };
+
     try {
         const jobDescription = await getJobDescription();
 
@@ -302,8 +237,19 @@ async function handleAnalyze() {
             throw new Error('Could not find job description. Navigate to a job posting page.');
         }
 
-        // API key is optional - hardcoded key will be used as fallback
-        const results = await MatchingEngine.analyze(resumeText, jobDescription, apiKey);
+        console.log('Job description extracted, length:', jobDescription.length);
+
+        // Reset progress UI
+        loadingText.textContent = 'Analyzing your resume...';
+        loadingProgress.classList.add('hidden');
+        progressFill.style.width = '0%';
+
+        // Use matching engine with progress callback
+        const results = await MatchingEngine.analyze(resumeText, jobDescription, onProgress);
+
+        // Log which method was used
+        console.log('Analysis method:', results.method || 'TF-IDF');
+
         displayResults(results);
 
     } catch (error) {
@@ -311,6 +257,7 @@ async function handleAnalyze() {
         showError(error.message);
     } finally {
         showLoading(false);
+        loadingProgress.classList.add('hidden');
     }
 }
 
@@ -331,6 +278,8 @@ async function getJobDescription() {
                             '.job-desc', '.jd-container', '#job_desc', '.dang-inner-html',
                             '#jobDescriptionText', '.jobsearch-jobDescriptionText',
                             '[class*="job-description"]', '[class*="jobDescription"]',
+                            '[class*="JobDescription"]', '[class*="job_description"]',
+                            '.posting-requirements', '.job-details',
                             'article', '.description', 'main'
                         ];
 
@@ -339,7 +288,7 @@ async function getJobDescription() {
                             if (el) {
                                 const text = el.innerText || el.textContent;
                                 if (text && text.trim().length > 100) {
-                                    return text.trim().substring(0, 8000);
+                                    return text.trim().substring(0, 10000);
                                 }
                             }
                         }
@@ -398,11 +347,11 @@ function animateScore(score) {
     if (!svg.querySelector('#scoreGradient')) {
         const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
         defs.innerHTML = `
-      <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style="stop-color:#6366f1"/>
-        <stop offset="100%" style="stop-color:#10b981"/>
-      </linearGradient>
-    `;
+            <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#6366f1"/>
+                <stop offset="100%" style="stop-color:#10b981"/>
+            </linearGradient>
+        `;
         svg.insertBefore(defs, svg.firstChild);
     }
 
@@ -430,7 +379,7 @@ function displayKeywords(container, keywords, type) {
     container.innerHTML = '';
 
     if (!keywords || keywords.length === 0) {
-        container.innerHTML = `<span class="keyword-tag ${type}">None</span>`;
+        container.innerHTML = `<span class="keyword-tag ${type}">None found</span>`;
         return;
     }
 
@@ -454,7 +403,7 @@ function displaySuggestions(suggestions) {
 
     if (!suggestions || suggestions.length === 0) {
         const li = document.createElement('li');
-        li.textContent = 'No specific suggestions at this time.';
+        li.textContent = 'Your resume looks well-matched for this role!';
         suggestionsList.appendChild(li);
         return;
     }

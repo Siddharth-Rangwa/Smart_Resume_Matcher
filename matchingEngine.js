@@ -1,143 +1,272 @@
 /**
- * Smart Resume Matcher - Hugging Face AI Matching Engine
- * Uses Hugging Face Inference API for intelligent resume analysis
+ * Smart Resume Matcher - Enhanced Matching Engine
+ * Uses TF-IDF for semantic similarity with fallback
+ * 100% local processing, no external dependencies
  */
 
 const MatchingEngine = {
-    HF_API_URL: 'https://router.huggingface.co/v1/chat/completions',
+    /**
+     * Analyze resume against job description
+     */
+    async analyze(resumeText, jobDescription, onProgress) {
+        console.log('Starting analysis...');
 
-    // Hardcoded HF token (for personal use - don't push to public repos!)
-    HARDCODED_KEY: 'REMOVED',
+        if (onProgress) onProgress(10, 'Extracting skills...');
+
+        // Extract skills using database
+        const resumeSkills = SkillsDatabase.extractSkills(resumeText);
+        const jobSkills = SkillsDatabase.extractSkills(jobDescription);
+
+        console.log('Resume skills:', resumeSkills.length);
+        console.log('Job skills:', jobSkills.length);
+
+        if (onProgress) onProgress(30, 'Matching keywords...');
+
+        // Extract experience
+        const resumeExp = SkillsDatabase.extractExperience(resumeText);
+        const jobExp = SkillsDatabase.extractExperience(jobDescription);
+
+        // Calculate matched and missing skills
+        const matchedSkills = jobSkills.filter(skill =>
+            resumeSkills.some(rs => this.skillsMatch(rs, skill))
+        );
+        const missingSkills = jobSkills.filter(skill =>
+            !resumeSkills.some(rs => this.skillsMatch(rs, skill))
+        );
+
+        if (onProgress) onProgress(50, 'Calculating similarity...');
+
+        // Calculate scores
+        const keywordScore = this.calculateKeywordScore(matchedSkills, jobSkills);
+        const semanticScore = this.calculateSemanticScore(resumeText, jobDescription);
+        const experienceScore = this.calculateExperienceScore(resumeExp, jobExp);
+
+        console.log('Scores - Keyword:', keywordScore, 'Semantic:', semanticScore, 'Experience:', experienceScore);
+
+        if (onProgress) onProgress(80, 'Generating suggestions...');
+
+        // Weighted final score
+        const matchPercentage = Math.round(
+            (keywordScore * 0.45) +
+            (semanticScore * 0.35) +
+            (experienceScore * 0.20)
+        );
+
+        // Generate suggestions
+        const suggestions = this.generateSuggestions(missingSkills, resumeExp, jobExp, matchPercentage);
+
+        if (onProgress) onProgress(100, 'Done!');
+
+        return {
+            matchPercentage: Math.min(100, Math.max(0, matchPercentage)),
+            matchedKeywords: matchedSkills.slice(0, 20),
+            missingKeywords: missingSkills.slice(0, 15),
+            suggestions: suggestions,
+            breakdown: {
+                keywordScore: Math.round(keywordScore),
+                semanticScore: Math.round(semanticScore),
+                experienceScore: Math.round(experienceScore)
+            },
+            method: 'NLP Engine'
+        };
+    },
 
     /**
-     * Analyze resume against job description using Hugging Face AI
+     * Check if two skills match (including synonyms)
      */
-    async analyze(resumeText, jobDescription, apiKey) {
-        const key = apiKey || this.HARDCODED_KEY;
+    skillsMatch(skill1, skill2) {
+        skill1 = skill1.toLowerCase();
+        skill2 = skill2.toLowerCase();
 
-        if (!key) {
-            throw new Error('Please set your Hugging Face token in settings');
-        }
+        if (skill1 === skill2) return true;
 
-        const prompt = this.buildPrompt(resumeText, jobDescription);
-
-        try {
-            const response = await fetch(this.HF_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${key}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: 'HuggingFaceTB/SmolLM3-3B:hf-inference',
-                    messages: [
-                        { role: 'user', content: prompt }
-                    ],
-                    max_tokens: 2048,
-                    temperature: 0.2
-                })
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error?.message || 'API request failed');
+        // Check synonyms
+        const synonyms = SkillsDatabase.synonyms;
+        for (const [main, syns] of Object.entries(synonyms)) {
+            const allVariants = [main, ...syns].map(s => s.toLowerCase());
+            if (allVariants.includes(skill1) && allVariants.includes(skill2)) {
+                return true;
             }
+        }
 
-            const data = await response.json();
-            const text = data.choices?.[0]?.message?.content;
+        return false;
+    },
 
-            if (!text) throw new Error('No response from AI');
+    /**
+     * Calculate keyword match score
+     */
+    calculateKeywordScore(matchedSkills, jobSkills) {
+        if (jobSkills.length === 0) return 50;
+        return Math.round((matchedSkills.length / jobSkills.length) * 100);
+    },
 
-            return this.parseResponse(text);
-        } catch (error) {
-            console.error('Hugging Face API error:', error);
-            throw error;
+    /**
+     * Calculate semantic similarity using enhanced TF-IDF
+     */
+    calculateSemanticScore(resumeText, jobDescription) {
+        const resumeTokens = this.tokenize(resumeText);
+        const jobTokens = this.tokenize(jobDescription);
+
+        // Build vocabulary with IDF weights
+        const allDocs = [resumeTokens, jobTokens];
+        const vocab = new Set([...resumeTokens, ...jobTokens]);
+
+        // Calculate IDF for each term
+        const idf = {};
+        vocab.forEach(term => {
+            const docCount = allDocs.filter(doc => doc.includes(term)).length;
+            idf[term] = Math.log(allDocs.length / (docCount + 1)) + 1;
+        });
+
+        // Calculate TF-IDF vectors
+        const resumeVector = this.calculateTFIDFVector(resumeTokens, vocab, idf);
+        const jobVector = this.calculateTFIDFVector(jobTokens, vocab, idf);
+
+        // Calculate cosine similarity
+        const similarity = this.cosineSimilarity(resumeVector, jobVector);
+
+        return Math.round(Math.max(0, similarity) * 100);
+    },
+
+    /**
+     * Tokenize and clean text
+     */
+    tokenize(text) {
+        return text.toLowerCase()
+            .replace(/[^\w\s]/g, ' ')
+            .split(/\s+/)
+            .filter(word => word.length > 2)
+            .filter(word => !this.stopWords.includes(word));
+    },
+
+    /**
+     * Calculate TF-IDF vector for a document
+     */
+    calculateTFIDFVector(tokens, vocab, idf) {
+        const tf = {};
+        const totalTokens = tokens.length || 1;
+
+        // Calculate term frequency
+        tokens.forEach(token => {
+            tf[token] = (tf[token] || 0) + 1;
+        });
+
+        // Normalize TF and multiply by IDF
+        const vector = [];
+        vocab.forEach(word => {
+            const tfValue = (tf[word] || 0) / totalTokens;
+            const idfValue = idf[word] || 1;
+            vector.push(tfValue * idfValue);
+        });
+
+        return vector;
+    },
+
+    /**
+     * Calculate cosine similarity between two vectors
+     */
+    cosineSimilarity(vec1, vec2) {
+        if (!vec1 || !vec2 || vec1.length !== vec2.length) return 0;
+
+        let dotProduct = 0;
+        let norm1 = 0;
+        let norm2 = 0;
+
+        for (let i = 0; i < vec1.length; i++) {
+            dotProduct += vec1[i] * vec2[i];
+            norm1 += vec1[i] * vec1[i];
+            norm2 += vec2[i] * vec2[i];
+        }
+
+        norm1 = Math.sqrt(norm1);
+        norm2 = Math.sqrt(norm2);
+
+        if (norm1 === 0 || norm2 === 0) return 0;
+
+        return dotProduct / (norm1 * norm2);
+    },
+
+    /**
+     * Calculate experience match score
+     */
+    calculateExperienceScore(resumeExp, jobExp) {
+        if (jobExp === 0) return 80; // No experience mentioned in job
+        if (resumeExp === 0) return 40; // No experience found in resume
+
+        if (resumeExp >= jobExp) {
+            return 100; // Meets or exceeds requirement
+        } else {
+            const ratio = resumeExp / jobExp;
+            return Math.round(40 + (ratio * 60));
         }
     },
 
     /**
-     * Build the analysis prompt
+     * Generate improvement suggestions
      */
-    buildPrompt(resumeText, jobDescription) {
-        return `You are an expert ATS (Applicant Tracking System) analyzer. Analyze how well the resume matches the job description.
+    generateSuggestions(missingSkills, resumeExp, jobExp, matchScore) {
+        const suggestions = [];
 
-RESUME:
-${resumeText.substring(0, 3000)}
+        // Skill-based suggestions
+        if (missingSkills.length > 0) {
+            const topMissing = missingSkills.slice(0, 3).map(s =>
+                s.charAt(0).toUpperCase() + s.slice(1)
+            );
+            suggestions.push(`Add these key skills to your resume: ${topMissing.join(', ')}`);
 
-JOB DESCRIPTION:
-${jobDescription.substring(0, 2000)}
-
-TASK: Analyze the match and respond with ONLY a JSON object (no other text, no markdown):
-
-{"matchPercentage": <number 0-100>, "matchedKeywords": ["skill1", "skill2"], "missingKeywords": ["skill1", "skill2"], "suggestions": ["suggestion1", "suggestion2", "suggestion3"]}
-
-Rules:
-- matchPercentage: realistic ATS score
-- matchedKeywords: skills from resume that match job requirements
-- missingKeywords: important skills from job NOT in resume
-- suggestions: 3-5 specific tips to improve resume for this job
-- Return ONLY the JSON, nothing else`;
-    },
-
-    /**
-     * Parse AI response into structured data
-     */
-    parseResponse(text) {
-        try {
-            let cleaned = text.trim();
-
-            // Remove thinking tags if present
-            cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
-
-            // Remove markdown code blocks
-            cleaned = cleaned.replace(/```json\s*/gi, '');
-            cleaned = cleaned.replace(/```\s*/g, '');
-
-            // Find JSON object in response
-            const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                cleaned = jsonMatch[0];
+            if (missingSkills.length > 3) {
+                const moreMissing = missingSkills.slice(3, 6).map(s =>
+                    s.charAt(0).toUpperCase() + s.slice(1)
+                );
+                suggestions.push(`Consider adding: ${moreMissing.join(', ')}`);
             }
-
-            cleaned = cleaned.trim();
-            const result = JSON.parse(cleaned);
-
-            return {
-                matchPercentage: Math.min(100, Math.max(0, parseInt(result.matchPercentage) || 0)),
-                matchedKeywords: Array.isArray(result.matchedKeywords) ? result.matchedKeywords.slice(0, 20) : [],
-                missingKeywords: Array.isArray(result.missingKeywords) ? result.missingKeywords.slice(0, 15) : [],
-                suggestions: Array.isArray(result.suggestions) ? result.suggestions.slice(0, 5) : [],
-                summary: result.summary || ''
-            };
-        } catch (e) {
-            console.error('Failed to parse AI response:', e);
-            console.error('Raw response:', text);
-            throw new Error('Failed to parse AI response. Please try again.');
         }
+
+        // Experience-based suggestions
+        if (jobExp > 0 && resumeExp < jobExp) {
+            const gap = jobExp - resumeExp;
+            suggestions.push(`Job requires ${jobExp}+ years experience (you have ${resumeExp}). Highlight transferable skills and projects.`);
+        }
+
+        // Score-based suggestions
+        if (matchScore < 50) {
+            suggestions.push('Consider tailoring your resume specifically for this role - add relevant keywords.');
+            suggestions.push('Review the job description and mirror its language in your resume.');
+        } else if (matchScore < 70) {
+            suggestions.push('Good foundation! Emphasize your experience with the technologies mentioned in the job.');
+        } else if (matchScore < 85) {
+            suggestions.push('Strong match! Quantify your achievements (e.g., "improved performance by 40%").');
+        } else {
+            suggestions.push('Excellent match! Ensure your resume formatting is ATS-friendly (no tables, graphics).');
+        }
+
+        // Always-useful suggestions
+        if (suggestions.length < 4) {
+            suggestions.push('Use action verbs: Led, Developed, Implemented, Optimized, Reduced, Increased.');
+        }
+
+        return suggestions.slice(0, 5);
     },
 
     /**
-     * Validate API key
+     * Common stop words to filter out
      */
-    async validateApiKey(apiKey) {
-        try {
-            const response = await fetch(this.HF_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: 'HuggingFaceTB/SmolLM3-3B:hf-inference',
-                    messages: [{ role: 'user', content: 'Say OK' }],
-                    max_tokens: 10
-                })
-            });
-            return response.ok;
-        } catch {
-            return false;
-        }
-    }
+    stopWords: [
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of',
+        'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be',
+        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
+        'may', 'might', 'must', 'shall', 'can', 'need', 'dare', 'ought', 'used',
+        'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they',
+        'what', 'which', 'who', 'whom', 'whose', 'where', 'when', 'why', 'how',
+        'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such',
+        'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
+        'just', 'also', 'now', 'here', 'there', 'then', 'once', 'about', 'into',
+        'through', 'during', 'before', 'after', 'above', 'below', 'between', 'under',
+        'again', 'further', 'any', 'your', 'our', 'their', 'its', 'his', 'her', 'my',
+        'am', 'been', 'being', 'having', 'such', 'own', 'same', 'doing', 'while',
+        'job', 'work', 'working', 'company', 'team', 'role', 'position', 'candidate',
+        'looking', 'seeking', 'join', 'able', 'well', 'good', 'great', 'best', 'etc'
+    ]
 };
 
 window.MatchingEngine = MatchingEngine;
