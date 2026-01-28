@@ -221,26 +221,136 @@ const SkillsDatabase = {
 
     /**
      * Extract years of experience from text
+     * Handles multiple formats:
+     * - "5 years of experience"
+     * - "Jan 2020 - Present"
+     * - "January 2020 - December 2024"
+     * - "2020 - 2025"
+     * - "01/2020 - 01/2025"
      */
     extractExperience(text) {
-        const patterns = [
-            /(\d+)\+?\s*(?:years?|yrs?)\s*(?:of)?\s*(?:experience|exp)/gi,
-            /(?:experience|exp)\s*(?:of)?\s*(\d+)\+?\s*(?:years?|yrs?)/gi,
-            /(\d+)\+?\s*(?:years?|yrs?)\s*(?:in|with|of)/gi
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1; // 1-12
+
+        // Month name to number mapping
+        const months = {
+            'jan': 1, 'january': 1,
+            'feb': 2, 'february': 2,
+            'mar': 3, 'march': 3,
+            'apr': 4, 'april': 4,
+            'may': 5,
+            'jun': 6, 'june': 6,
+            'jul': 7, 'july': 7,
+            'aug': 8, 'august': 8,
+            'sep': 9, 'sept': 9, 'september': 9,
+            'oct': 10, 'october': 10,
+            'nov': 11, 'november': 11,
+            'dec': 12, 'december': 12
+        };
+
+        let totalMonths = 0;
+        let maxExplicitYears = 0;
+
+        // Pattern 1: Explicit years mentioned (e.g., "5+ years of experience")
+        const explicitPatterns = [
+            /(\d+)\+?\s*(?:years?|yrs?)[\s,]*(?:of)?[\s,]*(?:experience|exp)/gi,
+            /(?:experience|exp)[\s:]*(?:of)?[\s:]*(\d+)\+?\s*(?:years?|yrs?)/gi,
+            /(\d+)\+?\s*(?:years?|yrs?)[\s,]*(?:in|with|of)[\s,]/gi
         ];
 
-        let maxYears = 0;
-        patterns.forEach(pattern => {
+        explicitPatterns.forEach(pattern => {
             let match;
             while ((match = pattern.exec(text)) !== null) {
                 const years = parseInt(match[1]);
-                if (years > maxYears && years < 50) { // sanity check
-                    maxYears = years;
+                if (years > maxExplicitYears && years < 50) {
+                    maxExplicitYears = years;
                 }
             }
         });
 
-        return maxYears;
+        // Pattern 2: Date ranges (e.g., "Jan 2020 - Present", "January 2020 - December 2024")
+        const dateRangePatterns = [
+            // "Jan 2020 - Present" or "Jan 2020 - Dec 2024"
+            /(?:^|\s)(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)[.,]?\s*['']?(\d{4})\s*[-–—to]+\s*(present|current|now|ongoing|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)[.,]?\s*['']?(\d{4})?/gi,
+
+            // "01/2020 - 01/2025" or "01-2020 - 01-2025"
+            /(\d{1,2})[\/\-](\d{4})\s*[-–—to]+\s*(\d{1,2})[\/\-](\d{4})/gi,
+
+            // "2020 - 2025" or "2020 - Present"
+            /(?:^|\s)(\d{4})\s*[-–—to]+\s*(present|current|now|ongoing|\d{4})/gi
+        ];
+
+        // Extract date ranges and calculate duration
+        const textLower = text.toLowerCase();
+
+        // Pattern: "Month Year - Month Year" or "Month Year - Present"
+        const monthYearPattern = /(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)[.,]?\s*['']?(\d{4})\s*[-–—to]+\s*(present|current|now|ongoing|till\s*date|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)[.,]?\s*['']?(\d{4})?/gi;
+
+        let match;
+        while ((match = monthYearPattern.exec(textLower)) !== null) {
+            const startMonth = months[match[1].toLowerCase()] || 1;
+            const startYear = parseInt(match[2]);
+
+            let endMonth, endYear;
+            const endPart = match[3].toLowerCase();
+
+            if (['present', 'current', 'now', 'ongoing'].includes(endPart) || endPart.includes('till')) {
+                endMonth = currentMonth;
+                endYear = currentYear;
+            } else {
+                endMonth = months[endPart] || 12;
+                endYear = parseInt(match[4]) || currentYear;
+            }
+
+            // Calculate months between dates
+            if (startYear >= 1990 && startYear <= currentYear && endYear >= startYear) {
+                const monthsDiff = (endYear - startYear) * 12 + (endMonth - startMonth);
+                if (monthsDiff > 0 && monthsDiff < 600) { // Max 50 years
+                    totalMonths += monthsDiff;
+                }
+            }
+        }
+
+        // Pattern: "Year - Year" or "Year - Present"
+        const yearPattern = /(?:^|[\s,])(\d{4})\s*[-–—to]+\s*(present|current|now|ongoing|\d{4})(?:[\s,]|$)/gi;
+
+        while ((match = yearPattern.exec(textLower)) !== null) {
+            const startYear = parseInt(match[1]);
+            let endYear;
+
+            const endPart = match[2].toLowerCase();
+            if (['present', 'current', 'now', 'ongoing'].includes(endPart)) {
+                endYear = currentYear;
+            } else {
+                endYear = parseInt(match[2]);
+            }
+
+            if (startYear >= 1990 && startYear <= currentYear && endYear >= startYear) {
+                const yearsDiff = endYear - startYear;
+                if (yearsDiff > 0 && yearsDiff < 50) {
+                    // Only add if we didn't already capture this from month-year pattern
+                    // Use a simple heuristic: if totalMonths is still 0, add this
+                    if (totalMonths === 0) {
+                        totalMonths += yearsDiff * 12;
+                    }
+                }
+            }
+        }
+
+        // Convert total months to years (round to nearest 0.5)
+        const calculatedYears = Math.round((totalMonths / 12) * 2) / 2;
+
+        // Return the maximum of explicit years or calculated years
+        const result = Math.max(maxExplicitYears, calculatedYears);
+
+        console.log('Experience extraction:', {
+            explicitYears: maxExplicitYears,
+            totalMonths: totalMonths,
+            calculatedYears: calculatedYears,
+            finalResult: result
+        });
+
+        return result;
     }
 };
 

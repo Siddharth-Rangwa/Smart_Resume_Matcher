@@ -273,25 +273,104 @@ async function getJobDescription() {
                 const results = await chrome.scripting.executeScript({
                     target: { tabId: tabs[0].id },
                     func: () => {
+                        // Comprehensive selectors for all major job portals
                         const selectors = [
-                            '.jobs-description__content', '.jobs-box__html-content',
-                            '.job-desc', '.jd-container', '#job_desc', '.dang-inner-html',
-                            '#jobDescriptionText', '.jobsearch-jobDescriptionText',
-                            '[class*="job-description"]', '[class*="jobDescription"]',
-                            '[class*="JobDescription"]', '[class*="job_description"]',
-                            '.posting-requirements', '.job-details',
-                            'article', '.description', 'main'
+                            // Wellfound (AngelList) - PRIORITY (CSS modules with hashes)
+                            '.styles_description__xjvTf',
+                            '[class^="styles_description__"]',
+                            '[class*="styles_description__"]',
+                            'div.styles_description__xjvTf',
+
+                            // LinkedIn
+                            '.jobs-description__content',
+                            '.jobs-box__html-content',
+                            '.jobs-description',
+
+                            // Naukri
+                            '.job-desc',
+                            '.jd-container',
+                            '#job_desc',
+                            '.dang-inner-html',
+                            '.styles_JDC__dang-inner-html__h0K4t',
+
+                            // Indeed
+                            '#jobDescriptionText',
+                            '.jobsearch-jobDescriptionText',
+
+                            // Wellfound additional patterns
+                            '[class*="styles_jobDescription"]',
+                            '[class*="styles_details"]',
+                            '[data-test="job-description"]',
+                            '.job-listing-about',
+
+                            // Glassdoor
+                            '.jobDescriptionContent',
+                            '[data-test="description"]',
+
+                            // Monster
+                            '.job-description',
+                            '#JobDescription',
+
+                            // Generic patterns (must be after specific ones)
+                            '[class*="job-description"]',
+                            '[class*="jobDescription"]',
+                            '[class*="JobDescription"]',
+                            '[class*="job_description"]',
+                            '[class*="jobDetail"]',
+                            '[class*="job-detail"]',
+
+                            // Fallback containers
+                            '.posting-requirements',
+                            '.job-details',
+                            '.job-content',
+                            'article[class*="job"]',
+                            'div[class*="listing"]',
+                            'section[class*="description"]',
+
+                            // Last resort
+                            'article',
+                            'main',
+                            '.description'
                         ];
 
+                        // Try each selector
                         for (const sel of selectors) {
-                            const el = document.querySelector(sel);
-                            if (el) {
-                                const text = el.innerText || el.textContent;
-                                if (text && text.trim().length > 100) {
-                                    return text.trim().substring(0, 10000);
+                            try {
+                                const el = document.querySelector(sel);
+                                if (el) {
+                                    const text = el.innerText || el.textContent;
+                                    if (text && text.trim().length > 100) {
+                                        console.log('Found job description with selector:', sel);
+                                        return text.trim().substring(0, 10000);
+                                    }
                                 }
+                            } catch (e) {
+                                // Ignore invalid selectors
                             }
                         }
+
+                        // Additional fallback: Find largest text block on page
+                        const allDivs = document.querySelectorAll('div, section, article');
+                        let bestMatch = null;
+                        let maxLength = 200;
+
+                        allDivs.forEach(div => {
+                            const text = div.innerText;
+                            if (text && text.length > maxLength && text.length < 15000) {
+                                // Check if it looks like a job description
+                                const hasJobKeywords = /experience|skills|requirements|responsibilities|qualifications|about|role|position|job|work/i.test(text);
+                                if (hasJobKeywords) {
+                                    maxLength = text.length;
+                                    bestMatch = text;
+                                }
+                            }
+                        });
+
+                        if (bestMatch) {
+                            console.log('Found job description via fallback scan');
+                            return bestMatch.substring(0, 10000);
+                        }
+
                         return null;
                     }
                 });
