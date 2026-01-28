@@ -1,32 +1,40 @@
 /**
- * Smart Resume Matcher - Gemini AI Matching Engine
- * Uses Google Gemini API for intelligent resume analysis
+ * Smart Resume Matcher - Hugging Face AI Matching Engine
+ * Uses Hugging Face Inference API for intelligent resume analysis
  */
 
 const MatchingEngine = {
-    GEMINI_API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    HF_API_URL: 'https://router.huggingface.co/v1/chat/completions',
+
+    // Hardcoded HF token (for personal use - don't push to public repos!)
+    HARDCODED_KEY: 'REMOVED',
 
     /**
-     * Analyze resume against job description using Gemini AI
+     * Analyze resume against job description using Hugging Face AI
      */
     async analyze(resumeText, jobDescription, apiKey) {
-        if (!apiKey) {
-            throw new Error('Please set your Gemini API key in settings');
+        const key = apiKey || this.HARDCODED_KEY;
+
+        if (!key) {
+            throw new Error('Please set your Hugging Face token in settings');
         }
 
         const prompt = this.buildPrompt(resumeText, jobDescription);
 
         try {
-            const response = await fetch(`${this.GEMINI_API_URL}?key=${apiKey}`, {
+            const response = await fetch(this.HF_API_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0.3,
-                        topP: 0.8,
-                        maxOutputTokens: 2048
-                    }
+                    model: 'HuggingFaceTB/SmolLM3-3B:hf-inference',
+                    messages: [
+                        { role: 'user', content: prompt }
+                    ],
+                    max_tokens: 2048,
+                    temperature: 0.2
                 })
             });
 
@@ -36,13 +44,13 @@ const MatchingEngine = {
             }
 
             const data = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const text = data.choices?.[0]?.message?.content;
 
-            if (!text) throw new Error('No response from Gemini');
+            if (!text) throw new Error('No response from AI');
 
             return this.parseResponse(text);
         } catch (error) {
-            console.error('Gemini API error:', error);
+            console.error('Hugging Face API error:', error);
             throw error;
         }
     },
@@ -51,50 +59,47 @@ const MatchingEngine = {
      * Build the analysis prompt
      */
     buildPrompt(resumeText, jobDescription) {
-        return `You are an expert ATS (Applicant Tracking System) and career coach. Analyze how well the resume matches the job description.
+        return `You are an expert ATS (Applicant Tracking System) analyzer. Analyze how well the resume matches the job description.
 
-## RESUME:
-${resumeText.substring(0, 4000)}
+RESUME:
+${resumeText.substring(0, 3000)}
 
-## JOB DESCRIPTION:
-${jobDescription.substring(0, 3000)}
+JOB DESCRIPTION:
+${jobDescription.substring(0, 2000)}
 
-## TASK:
-Analyze the resume against the job requirements and respond ONLY with valid JSON in this exact format:
+TASK: Analyze the match and respond with ONLY a JSON object (no other text, no markdown):
 
-{
-  "matchPercentage": <number 0-100>,
-  "matchedKeywords": ["skill1", "skill2", ...],
-  "missingKeywords": ["skill1", "skill2", ...],
-  "suggestions": [
-    "Specific actionable suggestion 1",
-    "Specific actionable suggestion 2",
-    "Specific actionable suggestion 3",
-    "Specific actionable suggestion 4",
-    "Specific actionable suggestion 5"
-  ],
-  "summary": "One paragraph summary of the match analysis"
-}
+{"matchPercentage": <number 0-100>, "matchedKeywords": ["skill1", "skill2"], "missingKeywords": ["skill1", "skill2"], "suggestions": ["suggestion1", "suggestion2", "suggestion3"]}
 
-IMPORTANT RULES:
-1. matchPercentage should reflect realistic ATS scoring
-2. matchedKeywords: Skills/technologies from the resume that match job requirements
-3. missingKeywords: Important skills from job description NOT found in resume
-4. suggestions: Specific, actionable tips to improve the resume for THIS job
-5. Be honest - don't inflate the match percentage
-6. Return ONLY the JSON object, no markdown, no explanation`;
+Rules:
+- matchPercentage: realistic ATS score
+- matchedKeywords: skills from resume that match job requirements
+- missingKeywords: important skills from job NOT in resume
+- suggestions: 3-5 specific tips to improve resume for this job
+- Return ONLY the JSON, nothing else`;
     },
 
     /**
-     * Parse Gemini response into structured data
+     * Parse AI response into structured data
      */
     parseResponse(text) {
         try {
-            // Clean up the response - remove markdown code blocks if present
             let cleaned = text.trim();
-            cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-            cleaned = cleaned.trim();
 
+            // Remove thinking tags if present
+            cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+
+            // Remove markdown code blocks
+            cleaned = cleaned.replace(/```json\s*/gi, '');
+            cleaned = cleaned.replace(/```\s*/g, '');
+
+            // Find JSON object in response
+            const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                cleaned = jsonMatch[0];
+            }
+
+            cleaned = cleaned.trim();
             const result = JSON.parse(cleaned);
 
             return {
@@ -105,21 +110,27 @@ IMPORTANT RULES:
                 summary: result.summary || ''
             };
         } catch (e) {
-            console.error('Failed to parse Gemini response:', e, text);
+            console.error('Failed to parse AI response:', e);
+            console.error('Raw response:', text);
             throw new Error('Failed to parse AI response. Please try again.');
         }
     },
 
     /**
-     * Validate API key by making a simple request
+     * Validate API key
      */
     async validateApiKey(apiKey) {
         try {
-            const response = await fetch(`${this.GEMINI_API_URL}?key=${apiKey}`, {
+            const response = await fetch(this.HF_API_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: 'Say "OK" only' }] }]
+                    model: 'HuggingFaceTB/SmolLM3-3B:hf-inference',
+                    messages: [{ role: 'user', content: 'Say OK' }],
+                    max_tokens: 10
                 })
             });
             return response.ok;

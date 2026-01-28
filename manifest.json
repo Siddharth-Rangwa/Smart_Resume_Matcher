@@ -19,7 +19,8 @@
         "https://glassdoor.com/*",
         "https://*.monster.com/*",
         "https://*.shine.com/*",
-        "https://*.foundit.in/*"
+        "https://*.foundit.in/*",
+        "https://wellfound.com/*"
     ],
     "action": {
         "default_popup": "popup.html",

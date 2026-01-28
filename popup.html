@@ -53,7 +53,7 @@
                                 d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"
                                 stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
-                        Gemini API Key
+                        Hugging Face Token
                     </h3>
                     <button class="btn-icon" id="closeSettings" title="Close">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -62,10 +62,11 @@
                         </svg>
                     </button>
                 </div>
-                <p class="settings-desc">Get your free API key from <a href="https://aistudio.google.com/apikey"
-                        target="_blank">Google AI Studio</a></p>
+                <p class="settings-desc">Get your free token from <a href="https://huggingface.co/settings/tokens"
+                        target="_blank">Hugging Face</a></p>
                 <div class="api-key-input-group">
-                    <input type="password" id="apiKeyInput" placeholder="Enter your Gemini API key" autocomplete="off">
+                    <input type="password" id="apiKeyInput" placeholder="Enter your HF token (hf_...)"
+                        autocomplete="off">
                     <button class="btn-icon" id="toggleKeyVisibility" title="Show/Hide">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
                             id="eyeIcon">
@@ -231,7 +232,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>⚡ Powered by Gemini AI</p>
+            <p>🤗 Powered by Hugging Face AI</p>
         </footer>
     </div>
 
