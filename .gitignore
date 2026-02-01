@@ -1,4 +1,36 @@
-# Test files
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+*.test.js
+test-results/
 test_api.py
 
-# Note: matchingEngine.js contains hardcoded API key - don't push to public repos!
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Chrome extension packages
+*.pem
+*.crx
+*.zip
+
+# User data for testing
+test-resumes/
+sample-data/

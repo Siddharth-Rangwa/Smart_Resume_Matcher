@@ -18,10 +18,13 @@ A **100% free** browser extension that analyzes your resume against job descript
 ## 🚀 Installation
 
 1. Clone or download this repository
+   ```bash
+   git clone https://github.com/Siddharth-Rangwa/Smart_Resume_Matcher.git
+   ```
 2. Open Chrome and go to `chrome://extensions/`
 3. Enable **Developer mode** (toggle in top right)
 4. Click **Load unpacked**
-5. Select the `my_extension` folder
+5. Select the `Smart_Resume_Matcher` folder
 
 ## 📖 How to Use
 
@@ -30,6 +33,17 @@ A **100% free** browser extension that analyzes your resume against job descript
 3. **Click the extension icon**
 4. **Click "Analyze Match"**
 5. **Get your results!**
+
+## 📸 Demo
+
+### Extension Interface
+![Extension Popup](0.png)
+
+### Match Analysis Results
+![Uplaod Resume](1.png)
+
+### Keyword Analysis & Suggestions
+![Match Results Score with Missing Keywords and Recommendations](2.png)
 
 ## 🎯 Supported Job Portals
 
@@ -60,7 +74,7 @@ Final Score = (Keyword Match × 45%) + (Semantic Similarity × 35%) + (Experienc
 ## 📁 Project Structure
 
 ```
-my_extension/
+Smart_Resume_Matcher/
 ├── manifest.json        # Extension configuration
 ├── popup.html           # UI markup
 ├── popup.css            # Styles
