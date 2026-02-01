@@ -39,10 +39,10 @@ A **100% free** browser extension that analyzes your resume against job descript
 ### Extension Interface
 ![Extension Popup](0.png)
 
-### Match Analysis Results
+### Uplaoad Resume
 ![Uplaod Resume](1.png)
 
-### Keyword Analysis & Suggestions
+### Match Result Score, Keyword Analysis & Suggestions
 ![Match Results Score with Missing Keywords and Recommendations](2.png)
 
 ## 🎯 Supported Job Portals
