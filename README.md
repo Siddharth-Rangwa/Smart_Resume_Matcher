@@ -1,4 +1,4 @@
-# 🎯 Smart Resume Matcher - Browser Extension
+# Smart Resume Matcher - Browser Extension
 
 A **100% free** browser extension that analyzes your resume against job descriptions and gives you an ATS-style match score. **No API key required!**
 
@@ -6,16 +6,16 @@ A **100% free** browser extension that analyzes your resume against job descript
 ![No API Key](https://img.shields.io/badge/API%20Key-Not%20Required-success)
 ![Local Processing](https://img.shields.io/badge/Processing-100%25%20Local-blue)
 
-## ✨ Features
+##  Features
 
-- 📊 **ATS-Style Match Score** - Get a percentage showing how well you match
-- ✅ **Matched Skills** - See which skills you have that the job wants
-- ⚠️ **Missing Skills** - Know exactly what's missing from your resume
-- 💡 **Smart Suggestions** - Actionable tips to improve your application
-- 🔒 **100% Private** - All processing happens in your browser
-- 🆓 **Completely Free** - No API keys, no tokens, no subscriptions
+-  **ATS-Style Match Score** - Get a percentage showing how well you match
+-  **Matched Skills** - See which skills you have that the job wants
+-  **Missing Skills** - Know exactly what's missing from your resume
+-  **Smart Suggestions** - Actionable tips to improve your application
+-  **100% Private** - All processing happens in your browser
+-  **Completely Free** - No API keys, no tokens, no subscriptions
 
-## 🚀 Installation
+##  Installation
 
 1. Clone or download this repository
    ```bash
@@ -26,7 +26,7 @@ A **100% free** browser extension that analyzes your resume against job descript
 4. Click **Load unpacked**
 5. Select the `Smart_Resume_Matcher` folder
 
-## 📖 How to Use
+##  How to Use
 
 1. **Upload your resume** (PDF or DOCX)
 2. **Navigate to any job posting** (LinkedIn, Naukri, Indeed, Wellfound, etc.)
@@ -34,7 +34,7 @@ A **100% free** browser extension that analyzes your resume against job descript
 4. **Click "Analyze Match"**
 5. **Get your results!**
 
-## 📸 Demo
+##  Demo
 
 ### Extension Interface
 ![Extension Popup](0.png)
@@ -45,7 +45,7 @@ A **100% free** browser extension that analyzes your resume against job descript
 ### Match Result Score, Keyword Analysis & Suggestions
 ![Match Results Score with Missing Keywords and Recommendations](2.png)
 
-## 🎯 Supported Job Portals
+##  Supported Job Portals
 
 - LinkedIn
 - Naukri.com
@@ -55,7 +55,7 @@ A **100% free** browser extension that analyzes your resume against job descript
 - Monster
 - And many more...
 
-## 🧠 How It Works
+##  How It Works
 
 The extension uses **local NLP (Natural Language Processing)** to:
 
@@ -71,7 +71,7 @@ The extension uses **local NLP (Natural Language Processing)** to:
 Final Score = (Keyword Match × 45%) + (Semantic Similarity × 35%) + (Experience Match × 20%)
 ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 Smart_Resume_Matcher/
@@ -88,7 +88,7 @@ Smart_Resume_Matcher/
 └── icons/               # Extension icons
 ```
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 - **Manifest V3** - Latest Chrome extension standard
 - **PDF.js** - Mozilla's PDF parser
@@ -96,23 +96,23 @@ Smart_Resume_Matcher/
 - **TF-IDF** - Text similarity algorithm
 - **Local NLP** - No external APIs needed
 
-## 🔒 Privacy
+##  Privacy
 
-- ✅ All processing happens **locally in your browser**
-- ✅ Your resume is stored **only in Chrome's local storage**
-- ✅ **No data is sent** to any external server
-- ✅ **No tracking** or analytics
+-  All processing happens **locally in your browser**
+-  Your resume is stored **only in Chrome's local storage**
+-  **No data is sent** to any external server
+-  **No tracking** or analytics
 
-## 📊 Accuracy
+##  Accuracy
 
 Our local NLP approach provides **75-85% accuracy** compared to real ATS systems. This is sufficient to:
 
-- ✅ Identify if you're a good match
-- ✅ Find critical missing skills
-- ✅ Get actionable improvement tips
-- ✅ Compare yourself across multiple jobs
+-  Identify if you're a good match
+-  Find critical missing skills
+-  Get actionable improvement tips
+-  Compare yourself across multiple jobs
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions are welcome! Feel free to:
 
@@ -120,7 +120,7 @@ Contributions are welcome! Feel free to:
 - Suggest features
 - Submit pull requests
 
-## 📄 License
+##  License
 
 MIT License - feel free to use and modify!
 
