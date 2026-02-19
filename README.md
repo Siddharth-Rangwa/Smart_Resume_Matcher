@@ -122,7 +122,7 @@ Contributions are welcome! Feel free to:
 
 ##  License
 
-MIT License - feel free to use and modify!
+MIT License - feel free to use and modify.!
 
 ---
 
