@@ -191,6 +191,18 @@ const SkillsDatabase = {
     },
 
     /**
+     * Build a regex pattern that correctly handles skills with dots, plus signs, etc.
+     * Regular \b fails for "node.js", "c++", "asp.net" because \b only works on \w chars.
+     */
+    buildSkillRegex(skill) {
+        const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // If skill starts/ends with a word char, use \b on that side; otherwise use lookaround
+        const start = /^\w/.test(skill) ? '\\b' : '(?<![\\w])';
+        const end = /\w$/.test(skill) ? '\\b' : '(?![\\w])';
+        return new RegExp(`${start}${escaped}${end}`, 'i');
+    },
+
+    /**
      * Extract skills from text
      */
     extractSkills(text) {
@@ -199,19 +211,26 @@ const SkillsDatabase = {
         const allSkills = this.getAllSkills();
 
         allSkills.forEach(skill => {
-            // Word boundary check to avoid partial matches
-            const regex = new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-            if (regex.test(textLower)) {
-                foundSkills.add(skill);
+            try {
+                const regex = this.buildSkillRegex(skill);
+                if (regex.test(textLower)) {
+                    foundSkills.add(skill);
+                }
+            } catch (e) {
+                // Ignore any regex construction errors for edge-case skills
             }
         });
 
         // Check synonyms
         Object.entries(this.synonyms).forEach(([main, syns]) => {
             syns.forEach(syn => {
-                const regex = new RegExp(`\\b${syn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-                if (regex.test(textLower)) {
-                    foundSkills.add(main);
+                try {
+                    const regex = this.buildSkillRegex(syn);
+                    if (regex.test(textLower)) {
+                        foundSkills.add(main);
+                    }
+                } catch (e) {
+                    // Ignore
                 }
             });
         });

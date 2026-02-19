@@ -1,6 +1,6 @@
 /**
  * Smart Resume Matcher - Enhanced Matching Engine
- * Uses TF-IDF for semantic similarity with fallback
+ * Uses TF-IDF + compromise.js NLP for semantic similarity
  * 100% local processing, no external dependencies
  */
 
@@ -13,9 +13,19 @@ const MatchingEngine = {
 
         if (onProgress) onProgress(10, 'Extracting skills...');
 
-        // Extract skills using database
-        const resumeSkills = SkillsDatabase.extractSkills(resumeText);
-        const jobSkills = SkillsDatabase.extractSkills(jobDescription);
+        // Normalize text using compromise.js NLP if available
+        const normalizedResume = this.normalizeText(resumeText);
+        const normalizedJob = this.normalizeText(jobDescription);
+
+        // Extract skills using database (run on BOTH original and normalized)
+        const resumeSkills = this.mergeSkills(
+            SkillsDatabase.extractSkills(resumeText),
+            SkillsDatabase.extractSkills(normalizedResume)
+        );
+        const jobSkills = this.mergeSkills(
+            SkillsDatabase.extractSkills(jobDescription),
+            SkillsDatabase.extractSkills(normalizedJob)
+        );
 
         console.log('Resume skills:', resumeSkills.length);
         console.log('Job skills:', jobSkills.length);
@@ -38,7 +48,7 @@ const MatchingEngine = {
 
         // Calculate scores
         const keywordScore = this.calculateKeywordScore(matchedSkills, jobSkills);
-        const semanticScore = this.calculateSemanticScore(resumeText, jobDescription);
+        const semanticScore = this.calculateSemanticScore(normalizedResume, normalizedJob);
         const experienceScore = this.calculateExperienceScore(resumeExp, jobExp);
 
         console.log('Scores - Keyword:', keywordScore, 'Semantic:', semanticScore, 'Experience:', experienceScore);
@@ -67,8 +77,43 @@ const MatchingEngine = {
                 semanticScore: Math.round(semanticScore),
                 experienceScore: Math.round(experienceScore)
             },
-            method: 'NLP Engine'
+            method: window.nlp ? 'NLP Engine (compromise.js)' : 'NLP Engine'
         };
+    },
+
+    /**
+     * Normalize text using compromise.js NLP (lemmatization + cleaning).
+     * Falls back to basic lowercasing if compromise is not loaded.
+     */
+    normalizeText(text) {
+        if (window.nlp) {
+            try {
+                const doc = window.nlp(text);
+                // Convert verbs to infinitive form: "managed" -> "manage", "building" -> "build"
+                doc.verbs().toInfinitive();
+                // Convert plural nouns to singular: "frameworks" -> "framework"
+                doc.nouns().toSingular();
+                return doc.text();
+            } catch (e) {
+                console.warn('compromise.js normalization failed, using raw text:', e);
+            }
+        }
+        return text;
+    },
+
+    /**
+     * Merge two skill arrays, deduplicating by lowercase value.
+     */
+    mergeSkills(arr1, arr2) {
+        const seen = new Set(arr1.map(s => s.toLowerCase()));
+        const merged = [...arr1];
+        for (const skill of arr2) {
+            if (!seen.has(skill.toLowerCase())) {
+                seen.add(skill.toLowerCase());
+                merged.push(skill);
+            }
+        }
+        return merged;
     },
 
     /**
@@ -96,7 +141,8 @@ const MatchingEngine = {
      * Calculate keyword match score
      */
     calculateKeywordScore(matchedSkills, jobSkills) {
-        if (jobSkills.length === 0) return 50;
+        // Return 0 instead of 50 when no job skills found — don't fake confidence
+        if (jobSkills.length === 0) return 0;
         return Math.round((matchedSkills.length / jobSkills.length) * 100);
     },
 
@@ -129,13 +175,15 @@ const MatchingEngine = {
     },
 
     /**
-     * Tokenize and clean text
+     * Tokenize and clean text.
+     * Important short tech terms (go, r, ai, ml, etc.) are whitelisted
+     * so they are not dropped by the length filter.
      */
     tokenize(text) {
         return text.toLowerCase()
             .replace(/[^\w\s]/g, ' ')
             .split(/\s+/)
-            .filter(word => word.length > 2)
+            .filter(word => word.length > 2 || this.shortSkillTokens.has(word))
             .filter(word => !this.stopWords.includes(word));
     },
 
@@ -247,6 +295,14 @@ const MatchingEngine = {
 
         return suggestions.slice(0, 5);
     },
+
+    /**
+     * Short but important tech/skill tokens that must NOT be filtered by length.
+     */
+    shortSkillTokens: new Set([
+        'go', 'r', 'ai', 'ml', 'dl', 'cv', 'ui', 'ux', 'qa', 'ci', 'cd',
+        'js', 'ts', 'c', 'db', 'vm', 'os', 'bi', 'rpa', 'sre', 'iac'
+    ]),
 
     /**
      * Common stop words to filter out

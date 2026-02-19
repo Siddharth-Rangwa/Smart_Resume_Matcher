@@ -555,6 +555,62 @@ body {
   color: var(--gray-600);
 }
 
+/* Score Breakdown */
+.score-breakdown {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.breakdown-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.breakdown-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-500);
+  width: 68px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.breakdown-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--gray-200);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.breakdown-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: var(--radius-full);
+  transition: width 0.6s ease;
+}
+
+.keyword-fill  { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+.semantic-fill { background: linear-gradient(90deg, #10b981, #34d399); }
+.experience-fill { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+.breakdown-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-600);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 /* Keywords Section */
 .keywords-section {
   background: white;

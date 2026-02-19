@@ -32,6 +32,14 @@ const missingCount = document.getElementById('missingCount');
 const matchedCount = document.getElementById('matchedCount');
 const suggestionsList = document.getElementById('suggestionsList');
 
+// Score breakdown elements
+const keywordScoreEl = document.getElementById('keywordScore');
+const semanticScoreEl = document.getElementById('semanticScore');
+const experienceScoreEl = document.getElementById('experienceScore');
+const keywordFill = document.getElementById('keywordFill');
+const semanticFill = document.getElementById('semanticFill');
+const experienceFill = document.getElementById('experienceFill');
+
 // ============================================
 // State
 // ============================================
@@ -222,9 +230,9 @@ async function handleAnalyze() {
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
 
-    // Progress callback for model loading
-    const onProgress = (percent, file) => {
-        loadingText.textContent = 'Loading AI model...';
+    // Progress callback
+    const onProgress = (percent, message) => {
+        loadingText.textContent = 'Analyzing your resume...';
         loadingProgress.classList.remove('hidden');
         progressFill.style.width = `${percent}%`;
         progressText.textContent = `${percent}%`;
@@ -391,6 +399,18 @@ function displayResults(results) {
 
     animateScore(results.matchPercentage);
     updateMatchLabel(results.matchPercentage);
+
+    // Display score breakdown bars
+    if (results.breakdown) {
+        const { keywordScore, semanticScore, experienceScore } = results.breakdown;
+        keywordScoreEl.textContent = keywordScore + '%';
+        semanticScoreEl.textContent = semanticScore + '%';
+        experienceScoreEl.textContent = experienceScore + '%';
+        // Animate bars with slight delay for visual effect
+        setTimeout(() => { keywordFill.style.width = keywordScore + '%'; }, 100);
+        setTimeout(() => { semanticFill.style.width = semanticScore + '%'; }, 200);
+        setTimeout(() => { experienceFill.style.width = experienceScore + '%'; }, 300);
+    }
 
     displayKeywords(missingKeywords, results.missingKeywords, 'missing');
     missingCount.textContent = results.missingKeywords.length;

@@ -118,6 +118,31 @@
                     <div class="score-label" id="matchLabel">Match Score</div>
                 </div>
 
+                <!-- Score Breakdown -->
+                <div class="score-breakdown" id="scoreBreakdown">
+                    <div class="breakdown-row">
+                        <span class="breakdown-label">Keywords</span>
+                        <div class="breakdown-bar">
+                            <div class="breakdown-fill keyword-fill" id="keywordFill"></div>
+                        </div>
+                        <span class="breakdown-value" id="keywordScore">0%</span>
+                    </div>
+                    <div class="breakdown-row">
+                        <span class="breakdown-label">Semantic</span>
+                        <div class="breakdown-bar">
+                            <div class="breakdown-fill semantic-fill" id="semanticFill"></div>
+                        </div>
+                        <span class="breakdown-value" id="semanticScore">0%</span>
+                    </div>
+                    <div class="breakdown-row">
+                        <span class="breakdown-label">Experience</span>
+                        <div class="breakdown-bar">
+                            <div class="breakdown-fill experience-fill" id="experienceFill"></div>
+                        </div>
+                        <span class="breakdown-value" id="experienceScore">0%</span>
+                    </div>
+                </div>
+
                 <!-- Keywords Analysis -->
                 <div class="keywords-section">
                     <div class="keywords-header">
@@ -192,13 +217,14 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>Local AI • No API Key Required</p>
+            <p> Made with ❤️ </p>
         </footer>
     </div>
 
     <!-- Libraries -->
     <script src="libs/pdf.min.js"></script>
     <script src="libs/mammoth.browser.min.js"></script>
+    <script src="libs/compromise.min.js"></script>
     <script src="skillsDatabase.js"></script>
     <script src="resumeParser.js"></script>
     <script src="matchingEngine.js"></script>
