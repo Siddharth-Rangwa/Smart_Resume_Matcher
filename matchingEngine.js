@@ -62,8 +62,8 @@ const MatchingEngine = {
             (experienceScore * 0.20)
         );
 
-        // Generate suggestions
-        const suggestions = this.generateSuggestions(missingSkills, resumeExp, jobExp, matchPercentage);
+        // Generate suggestions including ATS feedback
+        const suggestions = this.generateSuggestions(missingSkills, resumeExp, jobExp, matchPercentage, resumeText);
 
         if (onProgress) onProgress(100, 'Done!');
 
@@ -89,10 +89,20 @@ const MatchingEngine = {
         if (window.nlp) {
             try {
                 const doc = window.nlp(text);
-                // Convert verbs to infinitive form: "managed" -> "manage", "building" -> "build"
+                // Convert verbs to infinitive form: "managed" -> "manage"
                 doc.verbs().toInfinitive();
-                // Convert plural nouns to singular: "frameworks" -> "framework"
-                doc.nouns().toSingular();
+                
+                // Selective noun singularization
+                // We avoid blind singularization to protect frameworks like "Rails", "Jenkins", "Windows"
+                const protectedTerms = ['rails', 'jenkins', 'windows', 'kubernetes', 'k8s', 'express', 'css', 'sass', 'less', 'aws'];
+                
+                doc.nouns().forEach(n => {
+                    const word = n.text().toLowerCase().trim();
+                    if (!protectedTerms.includes(word)) {
+                        n.toSingular();
+                    }
+                });
+                
                 return doc.text();
             } catch (e) {
                 console.warn('compromise.js normalization failed, using raw text:', e);
@@ -176,13 +186,15 @@ const MatchingEngine = {
 
     /**
      * Tokenize and clean text.
-     * Important short tech terms (go, r, ai, ml, etc.) are whitelisted
-     * so they are not dropped by the length filter.
+     * Preserves important tech symbols like C++, C#, .NET
      */
     tokenize(text) {
         return text.toLowerCase()
-            .replace(/[^\w\s]/g, ' ')
+            // Preserve specific punctuation: . + # -
+            .replace(/[^\w\s.+#-]/g, ' ')
             .split(/\s+/)
+            // Clean up leading/trailing punctuation from words (but keep internal ones)
+            .map(word => word.replace(/^[-.]+|[-.]+$/g, ''))
             .filter(word => word.length > 2 || this.shortSkillTokens.has(word))
             .filter(word => !this.stopWords.includes(word));
     },
@@ -250,50 +262,65 @@ const MatchingEngine = {
     },
 
     /**
-     * Generate improvement suggestions
+     * Generate improvement suggestions and ATS Feedback
      */
-    generateSuggestions(missingSkills, resumeExp, jobExp, matchScore) {
+    generateSuggestions(missingSkills, resumeExp, jobExp, matchScore, resumeText) {
         const suggestions = [];
+        const textLower = (resumeText || '').toLowerCase();
 
-        // Skill-based suggestions
+        // 1. Skill-based suggestions
         if (missingSkills.length > 0) {
             const topMissing = missingSkills.slice(0, 3).map(s =>
                 s.charAt(0).toUpperCase() + s.slice(1)
             );
             suggestions.push(`Add these key skills to your resume: ${topMissing.join(', ')}`);
-
-            if (missingSkills.length > 3) {
-                const moreMissing = missingSkills.slice(3, 6).map(s =>
-                    s.charAt(0).toUpperCase() + s.slice(1)
-                );
-                suggestions.push(`Consider adding: ${moreMissing.join(', ')}`);
-            }
         }
 
-        // Experience-based suggestions
+        // 2. Experience-based suggestions
         if (jobExp > 0 && resumeExp < jobExp) {
             const gap = jobExp - resumeExp;
             suggestions.push(`Job requires ${jobExp}+ years experience (you have ${resumeExp}). Highlight transferable skills and projects.`);
         }
 
-        // Score-based suggestions
+        // 3. ATS Structural Integrity Analysis
+        const hasExperience = /(experience|work history|employment|history)/i.test(textLower);
+        const hasEducation = /(education|academic|degree|university)/i.test(textLower);
+        const hasSkills = /(skills|technologies|tech stack|technical)/i.test(textLower);
+        
+        if (!hasExperience || !hasEducation || !hasSkills) {
+            const missing = [];
+            if (!hasExperience) missing.push('Experience');
+            if (!hasEducation) missing.push('Education');
+            if (!hasSkills) missing.push('Skills');
+            suggestions.push(`ATS Formatting: Add standard section headers to help parsers. Missing: ${missing.join(', ')}`);
+        }
+
+        const longestWord = Math.max(0, ...textLower.split(/\s+/).map(w => w.length));
+        if (longestWord > 40) {
+            suggestions.push('ATS Formatting: We detected fused text. Avoid using tables or multi-column layouts as they break ATS parsers.');
+        }
+
+        // 4. Content Quality Engine
+        const actionVerbs = ['led', 'developed', 'managed', 'created', 'designed', 'implemented', 'built', 'spearheaded', 'architected', 'optimized', 'increased', 'reduced'];
+        const foundVerbs = actionVerbs.filter(verb => new RegExp(`\\b${verb}\\b`, 'i').test(textLower));
+        
+        if (foundVerbs.length < 3) {
+            suggestions.push('Content Quality: Use more strong action verbs (e.g., Developed, Optimized, Spearheaded) to describe your impact.');
+        }
+
+        const hasMetrics = /\d+(%|x|\+)?\s*(increase|decrease|growth|reduction|users|revenue|sales|faster|performance)/i.test(textLower) || /\$\d+/i.test(textLower);
+        if (!hasMetrics) {
+            suggestions.push('Content Quality: Quantify your achievements. Add metrics, numbers, or percentages (e.g., "Increased performance by 20%").');
+        }
+
+        // 5. Score-based suggestions
         if (matchScore < 50) {
-            suggestions.push('Consider tailoring your resume specifically for this role - add relevant keywords.');
-            suggestions.push('Review the job description and mirror its language in your resume.');
-        } else if (matchScore < 70) {
-            suggestions.push('Good foundation! Emphasize your experience with the technologies mentioned in the job.');
-        } else if (matchScore < 85) {
-            suggestions.push('Strong match! Quantify your achievements (e.g., "improved performance by 40%").');
-        } else {
+            suggestions.push('Consider tailoring your resume specifically for this role - mirror the job description language.');
+        } else if (matchScore >= 85) {
             suggestions.push('Excellent match! Ensure your resume formatting is ATS-friendly (no tables, graphics).');
         }
 
-        // Always-useful suggestions
-        if (suggestions.length < 4) {
-            suggestions.push('Use action verbs: Led, Developed, Implemented, Optimized, Reduced, Increased.');
-        }
-
-        return suggestions.slice(0, 5);
+        return suggestions.slice(0, 6);
     },
 
     /**
@@ -301,7 +328,7 @@ const MatchingEngine = {
      */
     shortSkillTokens: new Set([
         'go', 'r', 'ai', 'ml', 'dl', 'cv', 'ui', 'ux', 'qa', 'ci', 'cd',
-        'js', 'ts', 'c', 'db', 'vm', 'os', 'bi', 'rpa', 'sre', 'iac'
+        'js', 'ts', 'c', 'c#', 'f#', 'd3', 'db', 'vm', 'os', 'bi', 'rpa', 'sre', 'iac'
     ]),
 
     /**

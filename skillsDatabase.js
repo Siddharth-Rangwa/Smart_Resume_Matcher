@@ -192,14 +192,13 @@ const SkillsDatabase = {
 
     /**
      * Build a regex pattern that correctly handles skills with dots, plus signs, etc.
-     * Regular \b fails for "node.js", "c++", "asp.net" because \b only works on \w chars.
+     * Uses explicit boundary lookarounds instead of \b to preserve tech symbols.
      */
     buildSkillRegex(skill) {
         const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // If skill starts/ends with a word char, use \b on that side; otherwise use lookaround
-        const start = /^\w/.test(skill) ? '\\b' : '(?<![\\w])';
-        const end = /\w$/.test(skill) ? '\\b' : '(?![\\w])';
-        return new RegExp(`${start}${escaped}${end}`, 'i');
+        // Ensure the skill is bounded by space, common punctuation, or string ends.
+        // This solves the problem where \b fails on symbols like +, #, .
+        return new RegExp(`(?<=^|[\\s,.!?;:()\\[\\]{}&|"'-/\\\\])${escaped}(?=$|[\\s,.!?;:()\\[\\]{}&|"'-/\\\\])`, 'i');
     },
 
     /**
@@ -239,38 +238,24 @@ const SkillsDatabase = {
     },
 
     /**
-     * Extract years of experience from text
-     * Handles multiple formats:
-     * - "5 years of experience"
-     * - "Jan 2020 - Present"
-     * - "January 2020 - December 2024"
-     * - "2020 - 2025"
-     * - "01/2020 - 01/2025"
+     * Extract years of experience from text using Interval Union Algorithm
+     * Resolves overlapping concurrent employment dates
      */
     extractExperience(text) {
         const currentYear = new Date().getFullYear();
         const currentMonth = new Date().getMonth() + 1; // 1-12
 
-        // Month name to number mapping
         const months = {
-            'jan': 1, 'january': 1,
-            'feb': 2, 'february': 2,
-            'mar': 3, 'march': 3,
-            'apr': 4, 'april': 4,
-            'may': 5,
-            'jun': 6, 'june': 6,
-            'jul': 7, 'july': 7,
-            'aug': 8, 'august': 8,
-            'sep': 9, 'sept': 9, 'september': 9,
-            'oct': 10, 'october': 10,
-            'nov': 11, 'november': 11,
-            'dec': 12, 'december': 12
+            'jan': 1, 'january': 1, 'feb': 2, 'february': 2, 'mar': 3, 'march': 3,
+            'apr': 4, 'april': 4, 'may': 5, 'jun': 6, 'june': 6, 'jul': 7, 'july': 7,
+            'aug': 8, 'august': 8, 'sep': 9, 'sept': 9, 'september': 9,
+            'oct': 10, 'october': 10, 'nov': 11, 'november': 11, 'dec': 12, 'december': 12
         };
 
-        let totalMonths = 0;
         let maxExplicitYears = 0;
+        const textLower = text.toLowerCase();
 
-        // Pattern 1: Explicit years mentioned (e.g., "5+ years of experience")
+        // 1. Explicit years (e.g., "5 years of experience")
         const explicitPatterns = [
             /(\d+)\+?\s*(?:years?|yrs?)[\s,]*(?:of)?[\s,]*(?:experience|exp)/gi,
             /(?:experience|exp)[\s:]*(?:of)?[\s:]*(\d+)\+?\s*(?:years?|yrs?)/gi,
@@ -279,7 +264,7 @@ const SkillsDatabase = {
 
         explicitPatterns.forEach(pattern => {
             let match;
-            while ((match = pattern.exec(text)) !== null) {
+            while ((match = pattern.exec(textLower)) !== null) {
                 const years = parseInt(match[1]);
                 if (years > maxExplicitYears && years < 50) {
                     maxExplicitYears = years;
@@ -287,32 +272,29 @@ const SkillsDatabase = {
             }
         });
 
-        // Pattern 2: Date ranges (e.g., "Jan 2020 - Present", "January 2020 - December 2024")
-        const dateRangePatterns = [
-            // "Jan 2020 - Present" or "Jan 2020 - Dec 2024"
-            /(?:^|\s)(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)[.,]?\s*['']?(\d{4})\s*[-–—to]+\s*(present|current|now|ongoing|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)[.,]?\s*['']?(\d{4})?/gi,
+        // 2. Parse intervals
+        const intervals = [];
 
-            // "01/2020 - 01/2025" or "01-2020 - 01-2025"
-            /(\d{1,2})[\/\-](\d{4})\s*[-–—to]+\s*(\d{1,2})[\/\-](\d{4})/gi,
+        const addInterval = (sYear, sMonth, eYear, eMonth) => {
+            if (sYear >= 1990 && sYear <= currentYear && eYear >= sYear) {
+                const startTotalMonths = sYear * 12 + sMonth;
+                const endTotalMonths = eYear * 12 + eMonth;
+                if (startTotalMonths <= endTotalMonths) {
+                    intervals.push([startTotalMonths, endTotalMonths]);
+                }
+            }
+        };
 
-            // "2020 - 2025" or "2020 - Present"
-            /(?:^|\s)(\d{4})\s*[-–—to]+\s*(present|current|now|ongoing|\d{4})/gi
-        ];
-
-        // Extract date ranges and calculate duration
-        const textLower = text.toLowerCase();
-
-        // Pattern: "Month Year - Month Year" or "Month Year - Present"
+        // Pattern A: "Month Year - Month Year"
         const monthYearPattern = /(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)[.,]?\s*['']?(\d{4})\s*[-–—to]+\s*(present|current|now|ongoing|till\s*date|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)[.,]?\s*['']?(\d{4})?/gi;
 
         let match;
         while ((match = monthYearPattern.exec(textLower)) !== null) {
-            const startMonth = months[match[1].toLowerCase()] || 1;
+            const startMonth = months[match[1]] || 1;
             const startYear = parseInt(match[2]);
+            const endPart = match[3];
 
             let endMonth, endYear;
-            const endPart = match[3].toLowerCase();
-
             if (['present', 'current', 'now', 'ongoing'].includes(endPart) || endPart.includes('till')) {
                 endMonth = currentMonth;
                 endYear = currentYear;
@@ -320,54 +302,52 @@ const SkillsDatabase = {
                 endMonth = months[endPart] || 12;
                 endYear = parseInt(match[4]) || currentYear;
             }
+            addInterval(startYear, startMonth, endYear, endMonth);
+        }
 
-            // Calculate months between dates
-            if (startYear >= 1990 && startYear <= currentYear && endYear >= startYear) {
-                const monthsDiff = (endYear - startYear) * 12 + (endMonth - startMonth);
-                if (monthsDiff > 0 && monthsDiff < 600) { // Max 50 years
-                    totalMonths += monthsDiff;
-                }
+        // Pattern B: "01/2020 - 01/2025"
+        const mmYyyyPattern = /(\d{1,2})[\/\-](\d{4})\s*[-–—to]+\s*(\d{1,2})[\/\-](\d{4})/gi;
+        while ((match = mmYyyyPattern.exec(textLower)) !== null) {
+            const startMonth = parseInt(match[1]);
+            const startYear = parseInt(match[2]);
+            const endMonth = parseInt(match[3]);
+            const endYear = parseInt(match[4]);
+            if (startMonth >= 1 && startMonth <= 12 && endMonth >= 1 && endMonth <= 12) {
+                addInterval(startYear, startMonth, endYear, endMonth);
             }
         }
 
-        // Pattern: "Year - Year" or "Year - Present"
+        // Pattern C: "Year - Year"
         const yearPattern = /(?:^|[\s,])(\d{4})\s*[-–—to]+\s*(present|current|now|ongoing|\d{4})(?:[\s,]|$)/gi;
-
         while ((match = yearPattern.exec(textLower)) !== null) {
             const startYear = parseInt(match[1]);
-            let endYear;
-
-            const endPart = match[2].toLowerCase();
-            if (['present', 'current', 'now', 'ongoing'].includes(endPart)) {
-                endYear = currentYear;
-            } else {
-                endYear = parseInt(match[2]);
-            }
-
-            if (startYear >= 1990 && startYear <= currentYear && endYear >= startYear) {
-                const yearsDiff = endYear - startYear;
-                if (yearsDiff > 0 && yearsDiff < 50) {
-                    // Only add if we didn't already capture this from month-year pattern
-                    // Use a simple heuristic: if totalMonths is still 0, add this
-                    if (totalMonths === 0) {
-                        totalMonths += yearsDiff * 12;
-                    }
-                }
-            }
+            const endPart = match[2];
+            const endYear = ['present', 'current', 'now', 'ongoing'].includes(endPart) ? currentYear : parseInt(endPart);
+            addInterval(startYear, 1, endYear, 12);
         }
 
-        // Convert total months to years (round to nearest 0.5)
-        const calculatedYears = Math.round((totalMonths / 12) * 2) / 2;
+        // 3. Union Overlapping Intervals
+        intervals.sort((a, b) => a[0] - b[0]);
+        let totalMonthsCalculated = 0;
 
-        // Return the maximum of explicit years or calculated years
+        if (intervals.length > 0) {
+            let currentInterval = intervals[0];
+            for (let i = 1; i < intervals.length; i++) {
+                if (intervals[i][0] <= currentInterval[1]) {
+                    // Overlapping, merge them
+                    currentInterval[1] = Math.max(currentInterval[1], intervals[i][1]);
+                } else {
+                    // Not overlapping, add to total and advance
+                    totalMonthsCalculated += (currentInterval[1] - currentInterval[0]);
+                    currentInterval = intervals[i];
+                }
+            }
+            // Add the last interval
+            totalMonthsCalculated += (currentInterval[1] - currentInterval[0]);
+        }
+
+        const calculatedYears = Math.round((totalMonthsCalculated / 12) * 2) / 2;
         const result = Math.max(maxExplicitYears, calculatedYears);
-
-        console.log('Experience extraction:', {
-            explicitYears: maxExplicitYears,
-            totalMonths: totalMonths,
-            calculatedYears: calculatedYears,
-            finalResult: result
-        });
 
         return result;
     }
